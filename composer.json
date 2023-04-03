@@ -1,6 +1,7 @@
 {
     "name": "marcosbl/odtphp",
     "description": "ODT PHP templating system",
+    "version": "1.0.0",
     "keywords": [
         "odt",
         "php"
