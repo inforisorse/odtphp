@@ -1,6 +1,7 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp\Zip;
+namespace Inforisorse\OdtPhp\Zip;
 
 interface ZipInterface
 {

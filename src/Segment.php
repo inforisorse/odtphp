@@ -1,10 +1,11 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp;
+namespace Inforisorse\OdtPhp;
 
-use Odtphp\SegmentIterator;
-use Odtphp\Exceptions\SegmentException;
-use Odtphp\Exceptions\OdfException;
+use Inforisorse\OdtPhpSegmentIterator;
+use Inforisorse\OdtPhpExceptions\SegmentException;
+use Inforisorse\OdtPhpExceptions\OdfException;
 
 class Segment implements \IteratorAggregate, \Countable
 {
@@ -71,7 +72,7 @@ class Segment implements \IteratorAggregate, \Countable
      */
     public function getIterator()
     {
-        return new \RecursiveIteratorIterator(new \Odtphp\SegmentIterator($this->children), 1);
+        return new \RecursiveIteratorIterator(new \Inforisorse\OdtPhpSegmentIterator($this->children), 1);
     }
 
     /**
@@ -200,7 +201,7 @@ IMG;
         if (array_key_exists($prop, $this->children)) {
             return $this->children[$prop];
         } else {
-            //throw new \Odtphp\SegmentException('child ' . $prop . ' does not exist');
+            //throw new \Inforisorse\OdtPhpSegmentException('child ' . $prop . ' does not exist');
         }
     }
 
@@ -217,7 +218,7 @@ IMG;
             array_unshift($args, $meth);
             return call_user_func_array(array($this, 'setVars'), $args);
         } catch (SegmentException $e) {
-            //throw new \Odtphp\SegmentException("method $meth nor var $meth exist");
+            //throw new \Inforisorse\OdtPhpSegmentException("method $meth nor var $meth exist");
         }
     }
     

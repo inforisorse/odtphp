@@ -1,10 +1,11 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp\Zip;
+namespace Inforisorse\OdtPhp\Zip;
 
-use Odtphp\Zip\ZipInterface;
-use Odtphp\Exceptions\PhpZipProxyException;
-
+use Inforisorse\OdtPhp\Zip\ZipInterface;
+use Inforisorse\OdtPhp\Exceptions\PhpZipProxyException;
+use ZipArchive;
 class PhpZipProxy implements ZipInterface
 {
     protected $zipArchive;
@@ -20,7 +21,7 @@ class PhpZipProxy implements ZipInterface
         if (! class_exists('ZipArchive')) {
             throw new PhpZipProxyException('Zip extension not loaded - check your php settings, PHP5.2 minimum with zip extension is required for using PhpZipProxy');
         }
-        $this->zipArchive = new ZipArchive();
+        $this->zipArchive = new ZipArchive;
     }
 
     /**

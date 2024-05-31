@@ -1,6 +1,7 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp;
+namespace Inforisorse\OdtPhp;
 
 class SegmentIterator implements \RecursiveIterator
 {

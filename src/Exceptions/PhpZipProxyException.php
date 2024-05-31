@@ -1,6 +1,7 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp\Exceptions;
+namespace Inforisorse\OdtPhp\Exceptions;
 
 class PhpZipProxyException extends \Exception
 {

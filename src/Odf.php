@@ -1,29 +1,32 @@
 <?php
+declare(strict_types=1);
 
-namespace Odtphp;
+namespace Inforisorse\OdtPhp;
 
-use Odtphp\Segment;
-use Odtphp\Exceptions\OdfException;
-use Odtphp\Zip\PclZipProxy;
-use Odtphp\Zip\PhpZipProxy;
+use Inforisorse\OdtPhp\Segment;
+use Inforisorse\OdtPhp\Exceptions\OdfException;
+use Inforisorse\OdtPhp\Zip\PclZipProxy;
+use Inforisorse\OdtPhp\Zip\PhpZipProxy;
 
 class Odf
 {
-    protected $config = array(
-        'ZIP_PROXY' => 'Odtphp\\Zip\\PclZipProxy',
+    protected array $config = [
+        'ZIP_PROXY' => 'Inforisorse\OdtPhp\Zip\\PhpZipProxy',
         'DELIMITER_LEFT' => '{',
         'DELIMITER_RIGHT' => '}',
-        'PATH_TO_TMP' => null
-    );
+        'TEMP_DIRECTORY' => '/tmp',
+    ];
+
     protected $file;
-    protected $contentXml;      // To store content of content.xml file
-    protected $manifestXml;     // To store content of manifest.xml file
-    protected $stylesXml;       // To store content of styles.xml file
-    protected $tmpfile;
-    protected $images = array();
-    protected $vars = array();
-    protected $manif_vars = array(); // array to store image names
-    protected $segments = array();
+    protected string|bool $contentXml;      // To store content of content.xml file
+    protected string|bool $manifestXml;     // To store content of manifest.xml file
+    protected string|bool $stylesXml;       // To store content of styles.xml file
+    protected string $tmpfile;
+    protected array $images = [];
+    protected array $vars = [];
+    protected array $manif_vars = []; // array to store image names
+    protected array $segments = [];
+
     const PIXEL_TO_CM = 0.026458333;
 
     /**
@@ -61,11 +64,16 @@ class Odf
         }
         
         $this->file->close();
-        
-        $tmp = tempnam($this->config['PATH_TO_TMP'], md5(uniqid()));
+
+        $tmp = '/tmp/' .  md5(uniqid());
         copy($filename, $tmp);
         $this->tmpfile = $tmp;
         $this->_moveRowSegments();
+    }
+
+    protected function getTemporaryDirectory(): string
+    {
+
     }
 
     /**
