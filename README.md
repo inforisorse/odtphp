@@ -43,7 +43,7 @@ $odf = new Odf($template, []);
 $odf->setVars('variabile_1', 'Prima stringa sostituita');
 $odf->setVars('variabile_2', 'Seconda stringa sostituita');
 
-$outputFile = realpath(__DIR__ . '/../../storage/generated') . '/documento_1.odt';
+$outputFile = realpath(__DIR__ . '/../storage/generated') . '/documento_1.odt';
 $odf->saveToDisk($outputFile);
 ```
 
