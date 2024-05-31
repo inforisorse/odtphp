@@ -1,7 +1,7 @@
 {
     "name": "inforisorse/odtphp",
     "description": "ODT PHP templating system",
-    "version": "dev-master",
+    "version": "dev-main",
     "keywords": [
         "odt",
         "php"
