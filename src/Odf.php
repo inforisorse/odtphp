@@ -348,7 +348,7 @@ IMG;
         readfile($this->tmpfile);
     }
 
-    public function exportAsPdf(string $pdfFile): void
+    public function exportAsPdf(string $pdfFile): string
     {
         $parts = pathinfo($pdfFile);
         $outputDir = $parts['dirname'];
@@ -357,19 +357,20 @@ IMG;
         $cmd = sprintf('libreoffice --headless --convert-to pdf %s --outdir %s', $odtFile, $outputDir);
         $result = @shell_exec($cmd);
         unlink($odtFile);
+        return $result;
     }
 
     /**
      * Returns a variable of configuration
      *
-     * @return string The requested variable of configuration
+     * @return string The requested variable of configuration. If key not found then returns empty string
      */
-    public function getConfig($configKey)
+    public function getConfig(string $configKey, string $default = ''): string
     {
         if (array_key_exists($configKey, $this->config)) {
             return $this->config[$configKey];
         }
-        return false;
+        return $default;
     }
 
     /**
