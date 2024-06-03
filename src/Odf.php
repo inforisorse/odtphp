@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Inforisorse\OdtPhp;
 
 use Inforisorse\OdtPhp\Exceptions\OdfException;
-use Inforisorse\OdtPhp\Zip\PclZipProxy;
+use Inforisorse\OdtPhp\Zip\PhpZipProxy;
 
 class Odf
 {
@@ -15,15 +15,18 @@ class Odf
         'DELIMITER_RIGHT' => '}',
         'TEMP_DIRECTORY' => '/tmp',
     ];
-        protected $file;      // To store content of content.xml file
+    protected $file;      // To store content of content.xml file
     protected string|bool $contentXml;     // To store content of manifest.xml file
     protected string|bool $manifestXml;       // To store content of styles.xml file
-protected string|bool $stylesXml;
-    protected string $tmpfile;
+    protected string|bool $stylesXml;
+
+    protected string $tmpfile = '';
     protected array $images = [];
-        protected array $vars = []; // array to store image names
-protected array $manif_vars = [];
+    protected array $vars = []; // array to store image names
+    protected array $manif_vars = [];
     protected array $segments = [];
+
+    protected string $filename = ''; // the clean file name
 
     /**
      * Class constructor
@@ -33,6 +36,8 @@ protected array $manif_vars = [];
      */
     public function __construct($filename, $config = array())
     {
+        $this->fileName = pathinfo($filename, PATHINFO_FILENAME);
+
         if (!is_array($config)) {
             throw new OdfException('Configuration data must be provided as array');
         }
@@ -73,7 +78,7 @@ protected array $manif_vars = [];
      *
      * @return void
      */
-    private function _moveRowSegments()
+    private function _moveRowSegments(): void
     {
         // Search all possible rows in the document
         $reg1 = "#<table:table-row[^>]*>(.*)</table:table-row>#smU";
@@ -119,7 +124,7 @@ protected array $manif_vars = [];
      * @return odf
      * @throws OdfException
      */
-    public function setImage($key, $value, $page = -1, $width = null, $height = null, $offsetX = null, $offsetY = null)
+    public function setImage($key, $value, $page = -1, $width = null, $height = null, $offsetX = null, $offsetY = null): self
     {
         $filename = strtok(strrchr($value, '/'), '/.');
         $file = substr(strrchr($value, '/'), 1);
@@ -152,7 +157,7 @@ IMG;
      * @return odf
      * @throws OdfException
      */
-    public function setVars($key, $value, $encode = true, $charset = 'ISO-8859')
+    public function setVars($key, $value, $encode = true, $charset = 'ISO-8859'): self
     {
         $tag = $this->config['DELIMITER_LEFT'] . $key . $this->config['DELIMITER_RIGHT'];
         if (strpos($this->contentXml, $tag) === false && strpos($this->stylesXml, $tag) === false) {
@@ -168,7 +173,7 @@ IMG;
     /**
      * Recursive htmlspecialchars
      */
-    public function recursiveHtmlspecialchars($value)
+    public function recursiveHtmlspecialchars(string|array $value): string|array
     {
         if (is_array($value)) {
             return array_map(array($this, 'recursiveHtmlspecialchars'), $value);
@@ -184,7 +189,7 @@ IMG;
      * @return odf
      * @throws OdfException
      */
-    public function mergeSegment(Segment $segment)
+    public function mergeSegment(Segment $segment): self
     {
         if (!array_key_exists($segment->getName(), $this->segments)) {
             throw new OdfException($segment->getName() . 'cannot be parsed, has it been set yet ?');
@@ -204,7 +209,7 @@ IMG;
      *
      * @return string
      */
-    public function printVars()
+    public function printVars(): string
     {
         return print_r('<pre>' . print_r($this->vars, true) . '</pre>', true);
     }
@@ -225,7 +230,7 @@ IMG;
      *
      * @return string
      */
-    public function printDeclaredSegments()
+    public function printDeclaredSegments(): string
     {
         return '<pre>' . print_r(implode(' ', array_keys($this->segments)), true) . '</pre>';
     }
@@ -260,7 +265,7 @@ IMG;
      * @return void
      * @throws OdfException
      */
-    public function saveToDisk($file = null)
+    public function saveToDisk($file = null): void
     {
         if ($file !== null && is_string($file)) {
             if (file_exists($file) && !(is_file($file) && is_writable($file))) {
@@ -279,7 +284,7 @@ IMG;
      * @return void
      * @throws OdfException
      */
-    private function _save()
+    private function _save(): void
     {
         $this->file->open($this->tmpfile);
         $this->_parse();
@@ -314,7 +319,7 @@ IMG;
      *
      * @return void
      */
-    private function _parse()
+    private function _parse(): void
     {
         $this->contentXml = str_replace(array_keys($this->vars), array_values($this->vars), $this->contentXml);
         $this->stylesXml = str_replace(array_keys($this->vars), array_values($this->vars), $this->stylesXml);
@@ -327,7 +332,7 @@ IMG;
      * @return void
      * @throws OdfException
      */
-    public function exportAsAttachedFile($name = "")
+    public function exportAsAttachedFile($name = ""): void
     {
         $this->_save();
         if (headers_sent($filename, $linenum)) {
@@ -343,12 +348,15 @@ IMG;
         readfile($this->tmpfile);
     }
 
-    public function exportAsPdf(string $filename)
+    public function exportAsPdf(string $pdfFile): void
     {
-        $this->_save();
-        $cmd = sprintf('libreoffice --headless --convert-to pdf %s --outdir %s', $this->tmpfile, $filename);
+        $parts = pathinfo($pdfFile);
+        $outputDir = $parts['dirname'];
+        $odtFile = $outputDir . DIRECTORY_SEPARATOR . $parts['filename'] . '.odt';
+        $this->saveToDisk($odtFile);
+        $cmd = sprintf('libreoffice --headless --convert-to pdf %s --outdir %s', $odtFile, $outputDir);
         $result = @shell_exec($cmd);
-        unlink($this->tmpfile);
+        unlink($odtFile);
     }
 
     /**
@@ -369,7 +377,7 @@ IMG;
      *
      * @return string le chemin vers le fichier temporaire de travail
      */
-    public function getTmpfile()
+    public function getTmpfile(): string
     {
         return $this->tmpfile;
     }
