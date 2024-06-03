@@ -3,31 +3,27 @@ declare(strict_types=1);
 
 namespace Inforisorse\OdtPhp;
 
-use Inforisorse\OdtPhp\Segment;
 use Inforisorse\OdtPhp\Exceptions\OdfException;
 use Inforisorse\OdtPhp\Zip\PclZipProxy;
-use Inforisorse\OdtPhp\Zip\PhpZipProxy;
 
 class Odf
 {
+    const PIXEL_TO_CM = 0.026458333;
     protected array $config = [
         'ZIP_PROXY' => 'Inforisorse\OdtPhp\Zip\\PhpZipProxy',
         'DELIMITER_LEFT' => '{',
         'DELIMITER_RIGHT' => '}',
         'TEMP_DIRECTORY' => '/tmp',
     ];
-
-    protected $file;
-    protected string|bool $contentXml;      // To store content of content.xml file
-    protected string|bool $manifestXml;     // To store content of manifest.xml file
-    protected string|bool $stylesXml;       // To store content of styles.xml file
+        protected $file;      // To store content of content.xml file
+    protected string|bool $contentXml;     // To store content of manifest.xml file
+    protected string|bool $manifestXml;       // To store content of styles.xml file
+protected string|bool $stylesXml;
     protected string $tmpfile;
     protected array $images = [];
-    protected array $vars = [];
-    protected array $manif_vars = []; // array to store image names
+        protected array $vars = []; // array to store image names
+protected array $manif_vars = [];
     protected array $segments = [];
-
-    const PIXEL_TO_CM = 0.026458333;
 
     /**
      * Class constructor
@@ -62,89 +58,13 @@ class Odf
         if (($this->manifestXml = $this->file->getFromName('META-INF/manifest.xml')) === false) {
             throw new OdfException("Something is wrong with META-INF/manifest.xm in source file '$filename'");
         }
-        
+
         $this->file->close();
 
-        $tmp = '/tmp/' .  md5(uniqid());
+        $tmp = '/tmp/' . md5(uniqid());
         copy($filename, $tmp);
         $this->tmpfile = $tmp;
         $this->_moveRowSegments();
-    }
-
-    protected function getTemporaryDirectory(): string
-    {
-
-    }
-
-    /**
-     * Delete the temporary file when the object is destroyed
-     */
-    public function __destruct()
-    {
-        if (file_exists($this->tmpfile)) {
-            unlink($this->tmpfile);
-        }
-    }
-
-    /**
-     * Assing a template variable
-     *
-     * @param string $key name of the variable within the template
-     * @param string $value replacement value
-     * @param bool $encode if true, special XML characters are encoded
-     * @throws OdfException
-     * @return odf
-     */
-    public function setVars($key, $value, $encode = true, $charset = 'ISO-8859')
-    {
-        $tag= $this->config['DELIMITER_LEFT'] . $key . $this->config['DELIMITER_RIGHT'];
-        if (strpos($this->contentXml, $tag) === false && strpos($this->stylesXml, $tag) === false) {
-            //throw new OdfException("var $key not found in the document");
-        }
-        else
-        {
-	        $value = $encode ? $this->recursiveHtmlspecialchars($value) : $value;
-	        $value = ($charset == 'ISO-8859') ? utf8_encode($value) : $value;
-	        $this->vars[$tag] = str_replace("\n", "<text:line-break/>", $value);
-	    }
-        return $this;
-    }
-
-    /**
-     * Assign a template variable as a picture
-     *
-     * @param string $key name of the variable within the template
-     * @param string $value path to the picture
-     * @param integer $page anchor to page number (or -1 if anchor-type is as-char)
-     * @param integer $width width of picture (keep original if null)
-     * @param integer $height height of picture (keep original if null)
-     * @param integer $offsetX offset by horizontal (not used if $page = -1)
-     * @param integer $offsetY offset by vertical (not used if $page = -1)
-     * @throws OdfException
-     * @return odf
-     */
-    public function setImage($key, $value, $page = -1, $width = null, $height = null, $offsetX = null, $offsetY = null)
-    {
-        $filename = strtok(strrchr($value, '/'), '/.');
-        $file = substr(strrchr($value, '/'), 1);
-        $size = @getimagesize($value);
-        if ($size === false) {
-            throw new OdfException("Invalid image");
-        }
-        if (!$width && !$height) {
-            list ($width, $height) = $size;
-            $width *= Odf::PIXEL_TO_CM;
-            $height *= Odf::PIXEL_TO_CM;
-        }
-        $anchor = $page == -1 ? 'text:anchor-type="as-char"' : "text:anchor-type=\"page\" text:anchor-page-number=\"{$page}\" svg:x=\"{$offsetX}cm\" svg:y=\"{$offsetY}cm\"";
-        $xml = <<<IMG
-<draw:frame draw:style-name="fr1" draw:name="$filename" {$anchor} svg:width="{$width}cm" svg:height="{$height}cm" draw:z-index="3"><draw:image xlink:href="Pictures/$file" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/></draw:frame>
-IMG;
-        
-        $this->images[$value] = $file;
-        $this->manif_vars[] = $file;    //save image name as array element
-        $this->setVars($key, $xml, false);
-        return $this;
     }
 
     /**
@@ -165,10 +85,10 @@ IMG;
                 $balise = str_replace('row.', '', $matches2[1]);
                 // Move segment tags around the row
                 $replace = array(
-                    '[!-- BEGIN ' . $matches2[1] . ' --]'   => '',
-                    '[!-- END ' . $matches2[1] . ' --]'     => '',
-                    '<table:table-row'                          => '[!-- BEGIN ' . $balise . ' --]<table:table-row',
-                    '</table:table-row>'                        => '</table:table-row>[!-- END ' . $balise . ' --]'
+                    '[!-- BEGIN ' . $matches2[1] . ' --]' => '',
+                    '[!-- END ' . $matches2[1] . ' --]' => '',
+                    '<table:table-row' => '[!-- BEGIN ' . $balise . ' --]<table:table-row',
+                    '</table:table-row>' => '</table:table-row>[!-- END ' . $balise . ' --]'
                 );
                 $replacedXML = str_replace(array_keys($replace), array_values($replace), $matches[0][$i]);
                 $this->contentXml = str_replace($matches[0][$i], $replacedXML, $this->contentXml);
@@ -177,26 +97,96 @@ IMG;
     }
 
     /**
-     * Merge template variables
-     * Called automatically for a save
-     *
-     * @return void
+     * Delete the temporary file when the object is destroyed
      */
-    private function _parse()
+    public function __destruct()
     {
-        $this->contentXml = str_replace(array_keys($this->vars), array_values($this->vars), $this->contentXml);
-        $this->stylesXml  = str_replace(array_keys($this->vars), array_values($this->vars), $this->stylesXml);
+        if (file_exists($this->tmpfile)) {
+            unlink($this->tmpfile);
+        }
     }
+
+    /**
+     * Assign a template variable as a picture
+     *
+     * @param string $key name of the variable within the template
+     * @param string $value path to the picture
+     * @param integer $page anchor to page number (or -1 if anchor-type is as-char)
+     * @param integer $width width of picture (keep original if null)
+     * @param integer $height height of picture (keep original if null)
+     * @param integer $offsetX offset by horizontal (not used if $page = -1)
+     * @param integer $offsetY offset by vertical (not used if $page = -1)
+     * @return odf
+     * @throws OdfException
+     */
+    public function setImage($key, $value, $page = -1, $width = null, $height = null, $offsetX = null, $offsetY = null)
+    {
+        $filename = strtok(strrchr($value, '/'), '/.');
+        $file = substr(strrchr($value, '/'), 1);
+        $size = @getimagesize($value);
+        if ($size === false) {
+            throw new OdfException("Invalid image");
+        }
+        if (!$width && !$height) {
+            list ($width, $height) = $size;
+            $width *= Odf::PIXEL_TO_CM;
+            $height *= Odf::PIXEL_TO_CM;
+        }
+        $anchor = $page == -1 ? 'text:anchor-type="as-char"' : "text:anchor-type=\"page\" text:anchor-page-number=\"{$page}\" svg:x=\"{$offsetX}cm\" svg:y=\"{$offsetY}cm\"";
+        $xml = <<<IMG
+<draw:frame draw:style-name="fr1" draw:name="$filename" {$anchor} svg:width="{$width}cm" svg:height="{$height}cm" draw:z-index="3"><draw:image xlink:href="Pictures/$file" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/></draw:frame>
+IMG;
+
+        $this->images[$value] = $file;
+        $this->manif_vars[] = $file;    //save image name as array element
+        $this->setVars($key, $xml, false);
+        return $this;
+    }
+
+    /**
+     * Assing a template variable
+     *
+     * @param string $key name of the variable within the template
+     * @param string $value replacement value
+     * @param bool $encode if true, special XML characters are encoded
+     * @return odf
+     * @throws OdfException
+     */
+    public function setVars($key, $value, $encode = true, $charset = 'ISO-8859')
+    {
+        $tag = $this->config['DELIMITER_LEFT'] . $key . $this->config['DELIMITER_RIGHT'];
+        if (strpos($this->contentXml, $tag) === false && strpos($this->stylesXml, $tag) === false) {
+            //throw new OdfException("var $key not found in the document");
+        } else {
+            $value = $encode ? $this->recursiveHtmlspecialchars($value) : $value;
+            $value = ($charset == 'ISO-8859') ? utf8_encode($value) : $value;
+            $this->vars[$tag] = str_replace("\n", "<text:line-break/>", $value);
+        }
+        return $this;
+    }
+
+    /**
+     * Recursive htmlspecialchars
+     */
+    public function recursiveHtmlspecialchars($value)
+    {
+        if (is_array($value)) {
+            return array_map(array($this, 'recursiveHtmlspecialchars'), $value);
+        } else {
+            return htmlspecialchars($value);
+        }
+    }
+
     /**
      * Add the merged segment to the document
      *
      * @param Segment $segment
-     * @throws OdfException
      * @return odf
+     * @throws OdfException
      */
     public function mergeSegment(Segment $segment)
     {
-        if (! array_key_exists($segment->getName(), $this->segments)) {
+        if (!array_key_exists($segment->getName(), $this->segments)) {
             throw new OdfException($segment->getName() . 'cannot be parsed, has it been set yet ?');
         }
         $string = $segment->getName();
@@ -244,8 +234,8 @@ IMG;
      * Declare a segment in order to use it in a loop
      *
      * @param string $segment
-     * @throws OdfException
      * @return Segment
+     * @throws OdfException
      */
     public function setSegment($segment)
     {
@@ -257,9 +247,7 @@ IMG;
         if (preg_match($reg, html_entity_decode($this->contentXml), $m) == 0) {
             return false;
             //throw new OdfException("'$segment' segment not found in the document");
-        }
-        else
-        {
+        } else {
             $this->segments[$segment] = new Segment($segment, $m[1], $this);
             return $this->segments[$segment];
         }
@@ -269,8 +257,8 @@ IMG;
      * Save the odt file on the disk
      *
      * @param string $file name of the desired file
-     * @throws OdfException
      * @return void
+     * @throws OdfException
      */
     public function saveToDisk($file = null)
     {
@@ -288,8 +276,8 @@ IMG;
     /**
      * Internal save
      *
-     * @throws OdfException
      * @return void
+     * @throws OdfException
      */
     private function _save()
     {
@@ -298,19 +286,20 @@ IMG;
         if (!$this->file->addFromString('content.xml', $this->contentXml) || !$this->file->addFromString('styles.xml', $this->stylesXml)) {
             throw new OdfException('Error during file export addFromString');
         }
-        $lastpos=strrpos($this->manifestXml, "\n", -15); //find second last newline in the manifest.xml file
+        $lastpos = strrpos($this->manifestXml, "\n", -15); //find second last newline in the manifest.xml file
         $manifdata = "";
 
         //Enter all images description in $manifdata variable
         foreach ($this->manif_vars as $val) {
             $ext = substr(strrchr($val, '.'), 1);
-            $manifdata = $manifdata.'<manifest:file-entry manifest:media-type="image/'.$ext.'" manifest:full-path="Pictures/'.$val.'"/>'."\n";
+            $manifdata = $manifdata . '<manifest:file-entry manifest:media-type="image/' . $ext . '" manifest:full-path="Pictures/' . $val . '"/>' . "\n";
         }
         //Place content of $manifdata variable in manifest.xml file at appropriate place
-        $replace = '<manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>'; $this->manifestXml = str_replace($replace, $replace . "\n" . $manifdata, $this->manifestXml);
+        $replace = '<manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>';
+        $this->manifestXml = str_replace($replace, $replace . "\n" . $manifdata, $this->manifestXml);
         //$this->manifestXml = $this->manifestXml ."\n".$manifdata;
 
-        if (! $this->file->addFromString('META-INF/manifest.xml', $this->manifestXml)) {
+        if (!$this->file->addFromString('META-INF/manifest.xml', $this->manifestXml)) {
             throw new OdfException('Error during manifest file export');
         }
         foreach ($this->images as $imageKey => $imageValue) {
@@ -320,11 +309,23 @@ IMG;
     }
 
     /**
+     * Merge template variables
+     * Called automatically for a save
+     *
+     * @return void
+     */
+    private function _parse()
+    {
+        $this->contentXml = str_replace(array_keys($this->vars), array_values($this->vars), $this->contentXml);
+        $this->stylesXml = str_replace(array_keys($this->vars), array_values($this->vars), $this->stylesXml);
+    }
+
+    /**
      * Export the file as attached file by HTTP
      *
      * @param string $name (optionnal)
-     * @throws OdfException
      * @return void
+     * @throws OdfException
      */
     public function exportAsAttachedFile($name = "")
     {
@@ -332,14 +333,22 @@ IMG;
         if (headers_sent($filename, $linenum)) {
             throw new OdfException("headers already sent ($filename at $linenum)");
         }
-        
+
         if ($name == "") {
             $name = md5(uniqid()) . ".odt";
         }
-        
+
         header('Content-type: application/vnd.oasis.opendocument.text');
-        header('Content-Disposition: attachment; filename="'.$name.'"');
+        header('Content-Disposition: attachment; filename="' . $name . '"');
         readfile($this->tmpfile);
+    }
+
+    public function exportAsPdf(string $filename)
+    {
+        $this->_save();
+        $cmd = sprintf('libreoffice --headless --convert-to pdf %s --outdir %s', $this->tmpfile, $filename);
+        $result = @shell_exec($cmd);
+        unlink($this->tmpfile);
     }
 
     /**
@@ -365,15 +374,8 @@ IMG;
         return $this->tmpfile;
     }
 
-    /**
-     * Recursive htmlspecialchars
-     */
-    public function recursiveHtmlspecialchars($value)
+    protected function getTemporaryDirectory(): string
     {
-        if (is_array($value)) {
-            return array_map(array($this, 'recursiveHtmlspecialchars'), $value);
-        } else {
-            return htmlspecialchars($value);
-        }
+        return '';
     }
 }
