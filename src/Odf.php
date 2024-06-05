@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Inforisorse\OdtPhp;
 
 use Inforisorse\OdtPhp\Exceptions\OdfException;
-use Inforisorse\OdtPhp\Zip\PhpZipProxy;
 
 class Odf
 {
@@ -112,6 +111,28 @@ class Odf
     }
 
     /**
+     * Set images replacements from array
+     * @param array $replacements
+     * @return self
+     * @throws OdfException
+     */
+    public function setImages(array $replacements): self
+    {
+        foreach ($replacements as $key => $value) {
+            $this->setImage(
+                $key,
+                $value['file'],
+                $value['page'] ?? -1,
+                $value['width'] ?? null,
+                $value['height'] ?? null,
+                $value['offsetX'] ?? null,
+                $value['offsetY'] ?? null
+            );
+        }
+        return $this;
+    }
+
+    /**
      * Assign a template variable as a picture
      *
      * @param string $key name of the variable within the template
@@ -180,6 +201,21 @@ IMG;
         } else {
             return htmlspecialchars($value);
         }
+    }
+
+    /**
+     * Sets string replacement from array
+     *
+     * @param array $replacements array of <placeholder key> => <string value>
+     * @return self
+     * @throws OdfException
+     */
+    public function setStringVars(array $replacements): self
+    {
+        foreach ($replacements as $key => $value) {
+            $this->setVars($key, $value);
+        }
+        return $this;
     }
 
     /**
@@ -259,23 +295,26 @@ IMG;
     }
 
     /**
-     * Save the odt file on the disk
+     * Export the file as attached file by HTTP
      *
-     * @param string $file name of the desired file
+     * @param string $name (optionnal)
      * @return void
      * @throws OdfException
      */
-    public function saveToDisk($file = null): void
+    public function exportAsAttachedFile($name = ""): void
     {
-        if ($file !== null && is_string($file)) {
-            if (file_exists($file) && !(is_file($file) && is_writable($file))) {
-                throw new OdfException('Permission denied : can\'t create ' . $file);
-            }
-            $this->_save();
-            copy($this->tmpfile, $file);
-        } else {
-            $this->_save();
+        $this->_save();
+        if (headers_sent($filename, $linenum)) {
+            throw new OdfException("headers already sent ($filename at $linenum)");
         }
+
+        if ($name == "") {
+            $name = md5(uniqid()) . ".odt";
+        }
+
+        header('Content-type: application/vnd.oasis.opendocument.text');
+        header('Content-Disposition: attachment; filename="' . $name . '"');
+        readfile($this->tmpfile);
     }
 
     /**
@@ -326,29 +365,12 @@ IMG;
     }
 
     /**
-     * Export the file as attached file by HTTP
-     *
-     * @param string $name (optionnal)
-     * @return void
+     * Exports to PDF and save to file
+     * @param string $pdfFile the output PDF file path
+     * @return string the shellexec() output
      * @throws OdfException
      */
-    public function exportAsAttachedFile($name = ""): void
-    {
-        $this->_save();
-        if (headers_sent($filename, $linenum)) {
-            throw new OdfException("headers already sent ($filename at $linenum)");
-        }
-
-        if ($name == "") {
-            $name = md5(uniqid()) . ".odt";
-        }
-
-        header('Content-type: application/vnd.oasis.opendocument.text');
-        header('Content-Disposition: attachment; filename="' . $name . '"');
-        readfile($this->tmpfile);
-    }
-
-    public function exportAsPdf(string $pdfFile): string
+    public function saveToDiskAsPdf(string $pdfFile): string
     {
         $parts = pathinfo($pdfFile);
         $outputDir = $parts['dirname'];
@@ -358,6 +380,26 @@ IMG;
         $result = @shell_exec($cmd);
         unlink($odtFile);
         return $result;
+    }
+
+    /**
+     * Save the odt file on the disk
+     *
+     * @param string $file name of the desired file
+     * @return void
+     * @throws OdfException
+     */
+    public function saveToDisk($file = null): void
+    {
+        if ($file !== null && is_string($file)) {
+            if (file_exists($file) && !(is_file($file) && is_writable($file))) {
+                throw new OdfException('Permission denied : can\'t create ' . $file);
+            }
+            $this->_save();
+            copy($this->tmpfile, $file);
+        } else {
+            $this->_save();
+        }
     }
 
     /**
