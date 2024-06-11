@@ -379,7 +379,7 @@ IMG;
         $cmd = sprintf('libreoffice --headless --convert-to pdf %s --outdir %s', $odtFile, $outputDir);
         $result = @shell_exec($cmd);
         unlink($odtFile);
-        return $result ?? ''; 
+        return $result;
     }
 
     /**
